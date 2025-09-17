@@ -4,6 +4,7 @@ torchvision>=0.20.1
 torchaudio>=2.5.1
 transformers>=4.35.0
 huggingface-hub>=0.17.0
+hf_transfer>=0.1.4
 
 # Web Interface
 gradio>=3.50.0

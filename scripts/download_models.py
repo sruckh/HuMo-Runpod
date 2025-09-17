@@ -7,12 +7,13 @@ Downloads required models from Hugging Face and validates them.
 import argparse
 import json
 import os
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, Optional
 
-from huggingface_hub import snapshot_download
+
 
 
 @dataclass(frozen=True)
@@ -94,19 +95,29 @@ class ModelDownloader:
             print(f"Downloading {spec.repo_id} -> {target_dir}")
             target_dir.mkdir(parents=True, exist_ok=True)
 
-            snapshot_download(
-                repo_id=spec.repo_id,
-                local_dir=str(target_dir),
-                local_dir_use_symlinks=False,
-                resume_download=True,
-                token=self.hf_token,
-                allow_patterns=tuple(spec.allow_patterns) if spec.allow_patterns else None,
-                ignore_patterns=tuple(spec.ignore_patterns) if spec.ignore_patterns else None,
-                max_workers=4,
-            )
+            command = [
+                "hf",
+                "download",
+                spec.repo_id,
+                "--local-dir",
+                str(target_dir),
+            ]
+            if spec.allow_patterns:
+                command.extend(["--include", *spec.allow_patterns])
+            if spec.ignore_patterns:
+                command.extend(["--exclude", *spec.ignore_patterns])
 
-            print(f"Successfully downloaded {spec.repo_id}")
-            return True
+            if self.hf_token:
+                command.extend(["--token", self.hf_token])
+
+            result = subprocess.run(command, capture_output=True, text=True)
+
+            if result.returncode == 0:
+                print(f"Successfully downloaded {spec.repo_id}")
+                return True
+            else:
+                print(f"Error downloading {spec.repo_id}: {result.stderr}")
+                return False
 
         except Exception as exc:
             print(f"Error downloading {spec.repo_id}: {exc}")
