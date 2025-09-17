@@ -37,6 +37,7 @@ ENV CONDA_DIR=/opt/conda \
     MODEL_CACHE_DIR=${WORKDIR}/weights \
     OUTPUT_DIR=${WORKDIR}/output \
     HUGGINGFACE_CACHE=${WORKDIR}/weights/.cache \
+    PYTHONUNBUFFERED=1 \
     STARTUP_COMMAND="python /workspace/app/gradio_app.py"
 
 # Use Tini as init to handle signal forwarding and zombie reaping
