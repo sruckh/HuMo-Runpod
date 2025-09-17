@@ -48,7 +48,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--audio", required=True, help="Path to conditioning audio file")
     parser.add_argument("--image", help="Optional reference image (TIA mode)")
     parser.add_argument("--config", default=str(CONFIG_DEFAULT), help="Path to generate.yaml")
-    parser.add_argument("--output-dir", default=os.getenv("OUTPUT_DIR", "./output"), help="Directory for outputs")
+    parser.add_argument(
+        "--output-dir",
+        default=str(Path(os.getenv("OUTPUT_DIR", "./output")).resolve()),
+        help="Directory for outputs"
+    )
     parser.add_argument("--frames", type=int, help="Number of frames to generate")
     parser.add_argument("--height", type=int, help="Video height")
     parser.add_argument("--width", type=int, help="Video width")
