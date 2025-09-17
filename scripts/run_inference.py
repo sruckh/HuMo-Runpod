@@ -159,15 +159,18 @@ def write_request_manifest(cfg: Dict[str, Any], script_name: str, output_dir: Pa
 
 def normalise_variant(value: Optional[str]) -> str:
     if not value:
-        return "1.7B"
+        return "1.3B" # Default to 1.3B
+
     compact = value.replace("_", "").replace("-", "").replace(" ", "").lower()
-    if "1.7" in compact or "17b" in compact and "1" in compact and "." in compact:
-        return "1.7B"
-    if "17b" in compact or compact == "17":
-        return "17B"
-    if "17" in compact and "1" not in compact:
-        return "17B"
-    return "1.7B" if "1" in compact else "17B"
+
+    if "1.3" in compact or "1.3b" in compact:
+        return "1.3B"
+    if "14" in compact or "14b" in compact:
+        return "14B"
+
+    # Fallback if no match, perhaps raise an error or return a default
+    # For now, let's return 1.3B as a safe default
+    return "1.3B"
 
 
 def select_upstream_script(mode: str, variant: str) -> Path:
