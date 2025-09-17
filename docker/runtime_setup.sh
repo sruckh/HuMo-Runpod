@@ -115,13 +115,8 @@ install_ffmpeg() {
 }
 
 install_flash_attention() {
-    if [[ -z "${FLASH_ATTENTION_WHEEL_URL}" ]]; then
-        log "FLASH_ATTENTION_WHEEL_URL not provided; skipping flash-attention install"
-        return
-    fi
-
-    log "Installing flash-attention from ${FLASH_ATTENTION_WHEEL_URL}"
-    conda_run pip install --no-cache-dir "${FLASH_ATTENTION_WHEEL_URL}"
+    log "Installing flash-attention"
+    conda_run pip install --no-cache-dir "https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.1.post4/flash_attn-2.7.1.post4+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl"
 }
 
 clone_humo_repo() {
