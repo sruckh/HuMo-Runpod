@@ -1,5 +1,5 @@
 model:
-  variant: "1.7B"              # Options: "1.7B" (smaller) or "17B" (larger)
+  variant: "1.3B"              # Options: "1.3B" (smaller) or "14B" (larger)
 
 inputs:
   prompt: ""

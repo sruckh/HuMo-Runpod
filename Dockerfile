@@ -39,6 +39,7 @@ ENV CONDA_DIR=/opt/conda \
     HUGGINGFACE_CACHE=${WORKDIR}/weights/.cache \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
     PYTHONUNBUFFERED=1 \
+    GRADIO_SHARE=true \
     STARTUP_COMMAND="python /workspace/app/gradio_app.py"
 
 # Use Tini as init to handle signal forwarding and zombie reaping
