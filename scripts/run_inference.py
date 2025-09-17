@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
+import re
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DEFAULT = PROJECT_ROOT / "configs" / "generate.yaml"
@@ -30,6 +31,17 @@ SCRIPT_MATRIX = {
     ("TIA", "1.3B"): "infer_tia.sh",
     ("TIA", "14B"): "infer_tia.sh",
 }
+
+
+def expand_env_vars(text: str) -> str:
+    # This is a simple expansion, might need a more robust solution for complex cases
+    # For now, it handles ${VAR:-default}
+    def replace_var(match):
+        var_name = match.group(1)
+        default_value = match.group(2)
+        return os.getenv(var_name, default_value)
+
+    return re.sub(r'\$\{\w+:-.*?\}', replace_var, text)
 
 
 def load_yaml(path: Path) -> Dict[str, Any]:
@@ -133,7 +145,7 @@ def merge_metadata(config: Dict[str, Any], args: argparse.Namespace) -> Dict[str
     if args.variant:
         model["variant"] = args.variant
 
-    outputs.setdefault("directory", str(Path(args.output_dir).resolve()))
+    outputs.setdefault("directory", str(Path(os.getenv("OUTPUT_DIR", "./output")).resolve()))
 
     if args.metadata:
         metadata_path = Path(args.metadata)
@@ -210,6 +222,10 @@ def main() -> int:
     except Exception as exc:
         print(f"Failed to load config {config_path}: {exc}")
         return 1
+
+    # Expand environment variables in the config
+    if "outputs" in config and "directory" in config["outputs"]:
+        config["outputs"]["directory"] = expand_env_vars(config["outputs"]["directory"])
 
     audio_path = Path(args.audio).resolve()
     if not audio_path.exists():
