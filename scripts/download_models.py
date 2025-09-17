@@ -41,10 +41,10 @@ class ModelDownloader:
             files_to_validate=("config.json",),
         ),
         ModelSpec(
-            key="wan_t2v_17b",
-            repo_id="Wan-AI/Wan2.1-T2V-1.7B",
-            description="Wan 1.7B high-capacity model",
-            local_subdir="Wan2.1-T2V-1.7B",
+            key="wan_t2v_14b",
+            repo_id="Wan-AI/Wan2.1-T2V-14B",
+            description="Wan 14B high-capacity model",
+            local_subdir="Wan2.1-T2V-14B",
             required=False,
             files_to_validate=("config.json",),
         ),
@@ -67,7 +67,7 @@ class ModelDownloader:
             repo_id="huangjackson/Kim_Vocal_2",
             description="Kim Vocal 2 source separation model",
             local_subdir="audio_separator",
-            files_to_validate=("model.safetensors",),
+            files_to_validate=("Kim_Vocal_2.onnx",),
         ),
     )
 
