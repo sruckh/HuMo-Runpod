@@ -1,0 +1,12 @@
+project_name: HuMo
+language: python
+description: AI video generation system containerization for RunPod deployment
+main_directory: /opt/docker/HuMo
+source_directories:
+  - scripts
+  - .
+supported_languages:
+  - python
+  - docker
+  - yaml
+  - bash

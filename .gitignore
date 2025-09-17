@@ -1,0 +1,51 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+
+# Conda environments
+conda-env/
+*.conda-env
+
+# Jupyter and IPython
+.ipynb_checkpoints/
+
+# Logs and runtime artifacts
+logs/
+*.log
+output/
+
+# Local configuration
+.env.local
+.env.*
+!.env.example
+
+# Model weights and caches
+weights/
+checkpoints/
+*.ckpt
+*.safetensors
+*.pt
+hf_cache/
+
+# Docker artifacts
+*.tar
+*.img
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
+
+# Generated files
+build/
+dist/
+node_modules/

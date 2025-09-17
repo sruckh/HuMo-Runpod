@@ -1,0 +1,31 @@
+model:
+  variant: "1.7B"              # Options: "1.7B" (smaller) or "17B" (larger)
+
+inputs:
+  prompt: ""
+  negative_prompt: ""
+  audio_path: ""
+  image_path: ""
+
+outputs:
+  directory: "${OUTPUT_DIR:-/workspace/output}"
+  video_filename: "humo_output.mp4"
+  audio_filename: "humo_audio.wav"
+  metadata_filename: "metadata.json"
+
+generation:
+  frames: 64
+  scale_a: 1.0
+  scale_t: 7.5
+  mode: "TA"
+  height: 720
+  width: 1280
+  fps: 24
+
+dit:
+  sp_size: 1
+
+diffusion:
+  timesteps:
+    sampling:
+      steps: 25
