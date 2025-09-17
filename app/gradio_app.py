@@ -203,8 +203,8 @@ def build_interface() -> gr.Blocks:
                 label="Generation Mode",
             )
             variant = gr.Dropdown(
-                choices=["1.7B", "17B"],
-                value=default_config.get("model", {}).get("variant", "1.7B"),
+                choices=["1.3B", "14B"],
+                value=default_config.get("model", {}).get("variant", "1.3B"),
                 label="Model Variant",
             )
             seed = gr.Number(label="Seed", value=None)
