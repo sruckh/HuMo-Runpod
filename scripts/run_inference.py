@@ -25,10 +25,10 @@ HUMO_SOURCE_DIR = Path(os.getenv("HUMO_SOURCE_DIR", PROJECT_ROOT / "HuMo"))
 HUMO_SCRIPTS_DIR = HUMO_SOURCE_DIR / "scripts"
 
 SCRIPT_MATRIX = {
-    ("TA", "1.7B"): "infer_ta_1_7B.sh",
-    ("TA", "17B"): "infer_ta.sh",
-    ("TIA", "1.7B"): "infer_tia_1_7B.sh",
-    ("TIA", "17B"): "infer_tia.sh",
+    ("TA", "1.3B"): "infer_ta.sh",
+    ("TA", "14B"): "infer_ta.sh",
+    ("TIA", "1.3B"): "infer_tia.sh",
+    ("TIA", "14B"): "infer_tia.sh",
 }
 
 
@@ -64,8 +64,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--variant",
         default=None,
-        choices=["1.7B", "17B", "wan-1.7b", "wan-17b", "wan17b", "wan1.7b", "1_7B", "17b"],
-        help="Model variant selection (maps to upstream 1.7B/17B scripts)",
+        choices=["1.3B", "14B"],
+        help="Model variant selection (maps to upstream 1.3B/14B scripts)",
     )
     parser.add_argument("--sp-size", type=int, help="Sequence parallel size (dit.sp_size)")
     parser.add_argument("--metadata", default=None, help="Optional metadata json to merge into request")
