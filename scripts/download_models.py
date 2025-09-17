@@ -95,20 +95,24 @@ class ModelDownloader:
             print(f"Downloading {spec.repo_id} -> {target_dir}")
             target_dir.mkdir(parents=True, exist_ok=True)
 
-            command = [
-                "hf",
-                "download",
-                spec.repo_id,
-                "--local-dir",
-                str(target_dir),
-            ]
-            if spec.allow_patterns:
-                command.extend(["--include", *spec.allow_patterns])
-            if spec.ignore_patterns:
-                command.extend(["--exclude", *spec.ignore_patterns])
+            if spec.key == "audio_separator":
+                url = "https://huggingface.co/seanghay/uvr_models/resolve/main/Kim_Vocal_2.onnx"
+                command = ["wget", url, "-O", str(target_dir / "Kim_Vocal_2.onnx")]
+            else:
+                command = [
+                    "hf",
+                    "download",
+                    spec.repo_id,
+                    "--local-dir",
+                    str(target_dir),
+                ]
+                if spec.allow_patterns:
+                    command.extend(["--include", *spec.allow_patterns])
+                if spec.ignore_patterns:
+                    command.extend(["--exclude", *spec.ignore_patterns])
 
-            if self.hf_token:
-                command.extend(["--token", self.hf_token])
+                if self.hf_token:
+                    command.extend(["--token", self.hf_token])
 
             result = subprocess.run(command, capture_output=True, text=True)
 
