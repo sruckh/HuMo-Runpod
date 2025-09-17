@@ -27,6 +27,7 @@ output/
 .env.local
 .env.*
 !.env.example
+.mcp.json
 
 # Model weights and caches
 weights/

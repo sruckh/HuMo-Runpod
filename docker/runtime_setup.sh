@@ -47,6 +47,8 @@ ensure_conda_env() {
         exit 1
     fi
 
+    accept_conda_tos
+
     if [[ ! -d "${CONDA_DIR}/envs/${ENV_NAME}" ]]; then
         log "Creating conda environment ${ENV_NAME} with Python 3.11"
         "${CONDA_BIN}" create -y -n "${ENV_NAME}" python=3.11
@@ -57,6 +59,31 @@ ensure_conda_env() {
 
 conda_run() {
     "${CONDA_BIN}" run --no-capture-output -n "${ENV_NAME}" "$@"
+}
+
+accept_conda_tos() {
+    if ! command -v "${CONDA_BIN}" >/dev/null 2>&1; then
+        log "Skipping conda ToS acceptance; conda binary not available"
+        return
+    fi
+
+    local channels=(
+        "https://repo.anaconda.com/pkgs/main"
+        "https://repo.anaconda.com/pkgs/r"
+    )
+
+    for channel in "${channels[@]}"; do
+        log "Ensuring conda ToS accepted for ${channel}"
+        if "${CONDA_BIN}" tos accept --override-channels --channel "${channel}" >/dev/null 2>&1; then
+            continue
+        fi
+
+        log "Warning: Unable to accept ToS for ${channel}. Retrying with verbose output."
+        if ! "${CONDA_BIN}" tos accept --override-channels --channel "${channel}"; then
+            log "ERROR: Failed to accept conda ToS for ${channel}"
+            exit 1
+        fi
+    done
 }
 
 install_pytorch_stack() {
