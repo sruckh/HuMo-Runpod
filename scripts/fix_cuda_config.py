@@ -72,17 +72,28 @@ def fix_config_file(config_path: Path, gpu_count: int) -> bool:
 
     # Determine appropriate sp_size
     if gpu_count == 0:
-        # No GPUs available - force CPU mode or single GPU emulation
         recommended_sp_size = 1
         print("WARNING: No GPUs detected. Setting sp_size=1 for CPU fallback.")
     elif gpu_count == 1:
-        # Single GPU - no parallelism needed
         recommended_sp_size = 1
         print("Single GPU detected. Setting sp_size=1.")
     else:
-        # Multiple GPUs - use available count but cap at reasonable limit
-        recommended_sp_size = min(gpu_count, current_sp_size) if current_sp_size > 1 else 1
-        print(f"Multiple GPUs detected. Setting sp_size={recommended_sp_size}.")
+        if current_sp_size <= 1:
+            recommended_sp_size = gpu_count
+            print(
+                f"Multiple GPUs detected. sp_size not configured, defaulting to {recommended_sp_size}."
+            )
+        else:
+            recommended_sp_size = min(current_sp_size, gpu_count)
+            if recommended_sp_size != current_sp_size:
+                print(
+                    f"Multiple GPUs detected. Clamping configured sp_size={current_sp_size} "
+                    f"to available GPUs ({recommended_sp_size})."
+                )
+            else:
+                print(
+                    f"Multiple GPUs detected. Using configured sp_size={current_sp_size}."
+                )
 
     # Update configuration if needed
     config_modified = False
@@ -109,22 +120,26 @@ def fix_config_file(config_path: Path, gpu_count: int) -> bool:
 def set_environment_variables(gpu_count: int) -> None:
     """Set environment variables to help with CUDA issues."""
 
-    # Force single device if only one GPU or no GPUs
-    if gpu_count <= 1:
-        os.environ['CUDA_VISIBLE_DEVICES'] = '0' if gpu_count == 1 else ''
-        print(f"Set CUDA_VISIBLE_DEVICES={os.environ['CUDA_VISIBLE_DEVICES']}")
+    def apply_var(name: str, value: str, *, force: bool = False) -> None:
+        if force or os.environ.get(name) != value:
+            os.environ[name] = value
+            print(f"Set {name}={value}")
 
-    # Enable debugging if needed
+    # Provide sensible rendezvous defaults when not already configured
+    if 'MASTER_ADDR' not in os.environ:
+        apply_var('MASTER_ADDR', '127.0.0.1')
+    if 'MASTER_PORT' not in os.environ:
+        apply_var('MASTER_PORT', '29500')
+
+    # Force single-device execution semantics when GPUs are limited
+    if gpu_count <= 1:
+        apply_var('CUDA_VISIBLE_DEVICES', '0' if gpu_count == 1 else '', force=True)
+        apply_var('WORLD_SIZE', '1', force=True)
+        apply_var('RANK', '0', force=True)
+        apply_var('LOCAL_RANK', '0', force=True)
+
     if gpu_count == 0:
-        os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-        print("Set CUDA_LAUNCH_BLOCKING=1 for debugging")
-
-    # Disable distributed training for single GPU
-    if gpu_count <= 1:
-        os.environ['WORLD_SIZE'] = '1'
-        os.environ['RANK'] = '0'
-        os.environ['LOCAL_RANK'] = '0'
-        print("Set distributed training variables for single GPU mode")
+        apply_var('CUDA_LAUNCH_BLOCKING', '1', force=True)
 
 
 def main():

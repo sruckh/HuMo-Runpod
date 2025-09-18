@@ -87,6 +87,11 @@ def set_cuda_environment(gpu_count):
         env_vars['RANK'] = '0'
         env_vars['LOCAL_RANK'] = '0'
 
+        if 'MASTER_ADDR' not in os.environ:
+            env_vars['MASTER_ADDR'] = '127.0.0.1'
+        if 'MASTER_PORT' not in os.environ:
+            env_vars['MASTER_PORT'] = '29500'
+
         if gpu_count == 0:
             env_vars['CUDA_LAUNCH_BLOCKING'] = '1'
 

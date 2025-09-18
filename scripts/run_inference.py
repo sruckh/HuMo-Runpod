@@ -237,18 +237,10 @@ def main() -> int:
             print("CUDA configuration check completed")
             # Extract environment recommendations from fix script output
             for line in fix_result.stdout.split('\n'):
-                if 'Set CUDA_VISIBLE_DEVICES=' in line:
-                    value = line.split('Set CUDA_VISIBLE_DEVICES=')[1]
-                    cuda_env_overrides['CUDA_VISIBLE_DEVICES'] = value
-                elif 'Set CUDA_LAUNCH_BLOCKING=' in line:
-                    value = line.split('Set CUDA_LAUNCH_BLOCKING=')[1]
-                    cuda_env_overrides['CUDA_LAUNCH_BLOCKING'] = value
-                elif 'Set distributed training variables' in line:
-                    cuda_env_overrides.update({
-                        'WORLD_SIZE': '1',
-                        'RANK': '0',
-                        'LOCAL_RANK': '0'
-                    })
+                match = re.match(r"Set ([A-Z0-9_]+)=(.*)", line.strip())
+                if match:
+                    key, value = match.group(1), match.group(2)
+                    cuda_env_overrides[key] = value
 
     config_path = Path(args.config).resolve()
     try:
