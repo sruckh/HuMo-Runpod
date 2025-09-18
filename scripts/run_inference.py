@@ -225,6 +225,7 @@ def main() -> int:
     args = parse_args()
 
     # Fix CUDA configuration before proceeding
+    cuda_env_overrides = {}
     fix_script = Path(__file__).parent / "fix_cuda_config.py"
     if fix_script.exists():
         print("Running CUDA configuration fix...")
@@ -234,6 +235,20 @@ def main() -> int:
             print("Continuing anyway, but inference may fail...")
         else:
             print("CUDA configuration check completed")
+            # Extract environment recommendations from fix script output
+            for line in fix_result.stdout.split('\n'):
+                if 'Set CUDA_VISIBLE_DEVICES=' in line:
+                    value = line.split('Set CUDA_VISIBLE_DEVICES=')[1]
+                    cuda_env_overrides['CUDA_VISIBLE_DEVICES'] = value
+                elif 'Set CUDA_LAUNCH_BLOCKING=' in line:
+                    value = line.split('Set CUDA_LAUNCH_BLOCKING=')[1]
+                    cuda_env_overrides['CUDA_LAUNCH_BLOCKING'] = value
+                elif 'Set distributed training variables' in line:
+                    cuda_env_overrides.update({
+                        'WORLD_SIZE': '1',
+                        'RANK': '0',
+                        'LOCAL_RANK': '0'
+                    })
 
     config_path = Path(args.config).resolve()
     try:
@@ -299,6 +314,17 @@ def main() -> int:
     env.setdefault("OUTPUT_DIR", str(output_dir))
     env.setdefault("HUMO_GENERATE_CONFIG", str(resolved_config_path))
     env.setdefault("PYTHONUNBUFFERED", "1")
+
+    # Apply CUDA environment overrides for upstream HuMo scripts
+    env.update(cuda_env_overrides)
+    if cuda_env_overrides:
+        print(f"Applied CUDA environment overrides: {cuda_env_overrides}")
+
+    # Add our scripts directory to PATH to intercept torchrun calls
+    scripts_dir = str(Path(__file__).parent.resolve())
+    current_path = env.get('PATH', '')
+    env['PATH'] = f"{scripts_dir}:{current_path}"
+    print(f"Added {scripts_dir} to PATH for torchrun interception")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     completed = subprocess.run(
