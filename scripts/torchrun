@@ -1,9 +1,7 @@
 #!/bin/bash
-"""
-Torchrun intercept script that routes to our Python wrapper.
-This script is placed in PATH before the real torchrun to automatically
-apply CUDA device fixes to upstream HuMo distributed training calls.
-"""
+# Torchrun intercept script that routes to our Python wrapper.
+# This script is placed in PATH before the real torchrun to automatically
+# apply CUDA device fixes to upstream HuMo distributed training calls.
 
 # Get the directory of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
