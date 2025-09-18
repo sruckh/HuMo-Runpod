@@ -1,0 +1,1 @@
+Fixed an `IndentationError` in `scripts/run_inference.py`. The error was caused by a missing indented block in the `replace_var` function. Also removed duplicate function definitions for `expand_env_vars` and `replace_var`.

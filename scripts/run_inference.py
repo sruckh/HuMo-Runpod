@@ -41,12 +41,6 @@ def expand_env_vars(text: str) -> str:
         default_value = match.group(2)
         return os.getenv(var_name, default_value)
 
-    def expand_env_vars(text: str) -> str:
-    def replace_var(match):
-        var_name = match.group(1)
-        default_value = match.group(2)
-        return os.getenv(var_name, default_value)
-
     # Use fullmatch to ensure the entire string matches the pattern
     match = re.fullmatch(r'\$\{(\w+):-(.*?)\}', text)
     if match:
@@ -54,6 +48,8 @@ def expand_env_vars(text: str) -> str:
     else:
         # If it doesn't match the pattern, return the original text
         return text
+
+
 
 
 def load_yaml(path: Path) -> Dict[str, Any]:
