@@ -23,7 +23,7 @@ generation:
   fps: 24
 
 dit:
-  sp_size: 1
+  sp_size: 1  # Sequence parallel size - must match available GPUs
 
 diffusion:
   timesteps:

@@ -224,6 +224,17 @@ def sync_config_to_humo(resolved_config: Path) -> Path:
 def main() -> int:
     args = parse_args()
 
+    # Fix CUDA configuration before proceeding
+    fix_script = Path(__file__).parent / "fix_cuda_config.py"
+    if fix_script.exists():
+        print("Running CUDA configuration fix...")
+        fix_result = subprocess.run([sys.executable, str(fix_script)], capture_output=True, text=True)
+        if fix_result.returncode != 0:
+            print(f"CUDA fix failed: {fix_result.stderr}")
+            print("Continuing anyway, but inference may fail...")
+        else:
+            print("CUDA configuration check completed")
+
     config_path = Path(args.config).resolve()
     try:
         config = load_yaml(config_path)
