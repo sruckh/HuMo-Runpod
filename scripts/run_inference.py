@@ -272,6 +272,37 @@ def main() -> int:
         print(f"Failed to build request payload: {exc}")
         return 1
 
+    # Ensure dit.sp_size does not exceed the effective world size
+    effective_world_size = 1
+    ws_source = cuda_env_overrides.get("WORLD_SIZE") or os.environ.get("WORLD_SIZE")
+    if ws_source:
+        try:
+            effective_world_size = max(1, int(ws_source))
+        except ValueError:
+            print(f"Warning: Invalid WORLD_SIZE value '{ws_source}', defaulting to 1")
+            effective_world_size = 1
+
+    dit_section = merged.setdefault("dit", {})
+    raw_sp_size = dit_section.get("sp_size", 1)
+    try:
+        sp_size = max(1, int(raw_sp_size))
+    except (TypeError, ValueError):
+        print(f"Warning: Invalid dit.sp_size '{raw_sp_size}', forcing to 1")
+        sp_size = 1
+
+    if effective_world_size % sp_size != 0:
+        adjusted_sp_size = 1
+        if effective_world_size > 1:
+            for candidate in range(min(sp_size, effective_world_size), 0, -1):
+                if effective_world_size % candidate == 0:
+                    adjusted_sp_size = candidate
+                    break
+        if adjusted_sp_size != sp_size:
+            print(
+                f"Adjusted dit.sp_size from {sp_size} to {adjusted_sp_size} to align with WORLD_SIZE={effective_world_size}"
+            )
+        dit_section["sp_size"] = adjusted_sp_size
+
     generation_mode = merged.setdefault("generation", {}).get("mode", "TA").upper()
     merged["generation"]["mode"] = generation_mode
 
