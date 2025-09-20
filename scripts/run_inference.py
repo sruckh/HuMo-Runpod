@@ -14,8 +14,9 @@ import json
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import yaml
 import re
@@ -24,6 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DEFAULT = PROJECT_ROOT / "configs" / "generate.yaml"
 HUMO_SOURCE_DIR = Path(os.getenv("HUMO_SOURCE_DIR", PROJECT_ROOT / "HuMo"))
 HUMO_SCRIPTS_DIR = HUMO_SOURCE_DIR / "scripts"
+HUMO_BASE_INFERENCE_CONFIG = HUMO_SOURCE_DIR / "humo" / "configs" / "inference" / "generate.yaml"
 
 SCRIPT_MATRIX = {
     ("TA", "1.3B"): "infer_ta.sh",
@@ -211,6 +213,79 @@ def write_resolved_config(cfg: Dict[str, Any], output_dir: Path) -> Path:
     return resolved_path
 
 
+def load_base_humo_config() -> Dict[str, Any]:
+    if not HUMO_BASE_INFERENCE_CONFIG.exists():
+        raise FileNotFoundError(
+            f"Base HuMo inference config not found at {HUMO_BASE_INFERENCE_CONFIG}"
+        )
+    with HUMO_BASE_INFERENCE_CONFIG.open("r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or {}
+
+
+def build_positive_prompt_dataset(inputs: Dict[str, Any], output_dir: Path) -> Tuple[Path, str]:
+    prompt = inputs.get("prompt", "")
+    if not prompt:
+        raise ValueError("Prompt is required to build HuMo dataset")
+
+    itemname = f"request_{uuid.uuid4().hex[:8]}"
+    dataset = {
+        itemname: {
+            "prompt": prompt,
+            "audio_path": inputs.get("audio_path", ""),
+            "img_paths": [inputs["image_path"]] if inputs.get("image_path") else [],
+        }
+    }
+
+    dataset_path = output_dir / "positive_prompt.json"
+    with dataset_path.open("w", encoding="utf-8") as handle:
+        json.dump(dataset, handle, indent=2)
+
+    return dataset_path, itemname
+
+
+def render_humo_config(merged: Dict[str, Any], output_dir: Path) -> Dict[str, Any]:
+    base_cfg = load_base_humo_config()
+    cfg = copy.deepcopy(base_cfg)
+
+    generation = merged.setdefault("generation", {})
+    dit = merged.setdefault("dit", {})
+    diffusion = merged.setdefault("diffusion", {})
+    inputs = merged.setdefault("inputs", {})
+
+    dataset_path, itemname = build_positive_prompt_dataset(inputs, output_dir)
+    cfg.setdefault("generation", {})["positive_prompt"] = str(dataset_path)
+    cfg["generation"].setdefault("output", {})["dir"] = str(output_dir)
+
+    for key in ("mode", "frames", "height", "width", "fps", "seed", "scale_a", "scale_t"):
+        value = generation.get(key)
+        if value is not None:
+            cfg["generation"][key] = value
+
+    neg_prompt = inputs.get("negative_prompt")
+    if neg_prompt:
+        cfg["generation"]["sample_neg_prompt"] = neg_prompt
+
+    steps = diffusion.get("steps")
+    if steps is not None:
+        cfg.setdefault("diffusion", {}).setdefault("timesteps", {}).setdefault("sampling", {})["steps"] = steps
+
+    sp_size = dit.get("sp_size")
+    if sp_size is not None:
+        cfg.setdefault("dit", {})["sp_size"] = sp_size
+        cfg["generation"]["sequence_parallel"] = sp_size
+
+    # Track the generated item for debugging/logging purposes
+    cfg.setdefault("generation", {})["_request_itemname"] = itemname
+
+    inputs_dataset_note = {
+        "dataset": str(dataset_path),
+        "itemname": itemname,
+    }
+    cfg.setdefault("runtime_metadata", {}).update(inputs_dataset_note)
+
+    return cfg
+
+
 def sync_config_to_humo(resolved_config: Path) -> list[Path]:
     """Copy the resolved config into locations the upstream HuMo code expects."""
 
@@ -222,15 +297,13 @@ def sync_config_to_humo(resolved_config: Path) -> list[Path]:
     payload = resolved_config.read_text(encoding="utf-8")
 
     candidate_paths = [
-        HUMO_SOURCE_DIR / "generate.yaml",
-        HUMO_SOURCE_DIR / "configs" / "generate.yaml",
-        HUMO_SOURCE_DIR / "humo" / "configs" / "inference" / "generate.yaml",
+        HUMO_SOURCE_DIR / "generate.runtime.yaml",
+        HUMO_SOURCE_DIR / "configs" / "generate.runtime.yaml",
     ]
 
     written_targets: list[Path] = []
     for target in candidate_paths:
-        if not target.parent.exists():
-            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(payload, encoding="utf-8")
         written_targets.append(target)
 
@@ -350,12 +423,18 @@ def main() -> int:
     merged["outputs"]["directory"] = str(output_dir)
 
     try:
+        humo_ready_config = render_humo_config(merged, output_dir)
+    except Exception as exc:
+        print(f"Failed to translate request into HuMo config: {exc}")
+        return 1
+
+    try:
         script_path = select_upstream_script(generation_mode, variant_value)
     except Exception as exc:
         print(f"Failed to select HuMo script: {exc}")
         return 1
 
-    resolved_config_path = write_resolved_config(merged, output_dir)
+    resolved_config_path = write_resolved_config(humo_ready_config, output_dir)
 
     try:
         synced_paths = sync_config_to_humo(resolved_config_path)

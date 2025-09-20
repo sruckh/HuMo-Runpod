@@ -23,6 +23,29 @@ def detect_gpu_count():
         pass
     return 0
 
+def override_config_path(args):
+    """Replace the config YAML path with HUMO_GENERATE_CONFIG when available."""
+    resolved = os.environ.get("HUMO_GENERATE_CONFIG")
+    if not resolved or not Path(resolved).exists():
+        return args
+
+    patched = []
+    seen_script = False
+    replaced = False
+    for arg in args:
+        new_arg = arg
+        if not seen_script and arg.endswith('.py'):
+            seen_script = True
+        elif seen_script and not replaced and not arg.startswith('-'):
+            if arg.endswith(('.yaml', '.yml')):
+                print(f"torchrun_wrapper: Routing config {arg} -> {resolved}")
+                new_arg = resolved
+                replaced = True
+        patched.append(new_arg)
+
+    return patched
+
+
 def fix_torchrun_args(args, gpu_count):
     """
     Fix torchrun arguments based on available GPU count.
@@ -116,7 +139,7 @@ def main():
     set_cuda_environment(gpu_count)
 
     # Get original torchrun arguments (skip script name)
-    original_args = sys.argv[1:]
+    original_args = override_config_path(sys.argv[1:])
 
     # If no GPUs or single GPU, consider running without torchrun
     if gpu_count <= 1 and '--nproc_per_node' in ' '.join(original_args):
@@ -166,7 +189,7 @@ def main():
                     print(f"torchrun_wrapper: Injected override {key}={value}")
                 updated_script_args.append(f"{key}={value}")
 
-            script_args = script_args + updated_script_args
+            script_args = override_config_path(script_args + updated_script_args)
 
             print(f"torchrun_wrapper: Executing directly: python {python_script}")
             # Try direct execution first
