@@ -142,6 +142,32 @@ def main():
                     break
 
         if python_script:
+            # Inject overrides to keep sequence parallel/divisibility sane in single-process runs
+            overrides = {
+                'dit.sp_size': '1',
+                'generation.sequence_parallel': '1',
+            }
+
+            updated_script_args = []
+            existing_args = {}
+            for arg in script_args:
+                if '=' in arg:
+                    k, _, v = arg.partition('=')
+                    existing_args[k] = v
+
+            for key, value in overrides.items():
+                if key in existing_args and existing_args[key] == value:
+                    continue
+                if key in existing_args:
+                    print(
+                        f"torchrun_wrapper: Overriding {key} from {existing_args[key]} to {value}"
+                    )
+                else:
+                    print(f"torchrun_wrapper: Injected override {key}={value}")
+                updated_script_args.append(f"{key}={value}")
+
+            script_args = script_args + updated_script_args
+
             print(f"torchrun_wrapper: Executing directly: python {python_script}")
             # Try direct execution first
             try:
