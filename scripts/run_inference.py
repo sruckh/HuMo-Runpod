@@ -212,13 +212,33 @@ def write_resolved_config(cfg: Dict[str, Any], output_dir: Path) -> Path:
 
 
 def sync_config_to_humo(resolved_config: Path) -> Path:
-    target = HUMO_SOURCE_DIR / "generate.yaml"
-    if not target.parent.exists():
+    """Copy the resolved config into locations the upstream HuMo code expects."""
+
+    if not HUMO_SOURCE_DIR.exists():
         raise FileNotFoundError(
             f"HuMo repository not found at {HUMO_SOURCE_DIR}. Ensure runtime_setup.sh cloned it."
         )
-    target.write_text(resolved_config.read_text(encoding="utf-8"), encoding="utf-8")
-    return target
+
+    payload = resolved_config.read_text(encoding="utf-8")
+
+    targets = [
+        HUMO_SOURCE_DIR / "generate.yaml",
+        HUMO_SOURCE_DIR / "configs" / "generate.yaml",
+    ]
+
+    written_target = None
+    for target in targets:
+        if not target.parent.exists():
+            continue
+        target.write_text(payload, encoding="utf-8")
+        written_target = target
+
+    if not written_target:
+        raise FileNotFoundError(
+            f"Unable to locate a writable generate.yaml within {HUMO_SOURCE_DIR}"
+        )
+
+    return written_target
 
 
 def main() -> int:
@@ -302,6 +322,10 @@ def main() -> int:
                 f"Adjusted dit.sp_size from {sp_size} to {adjusted_sp_size} to align with WORLD_SIZE={effective_world_size}"
             )
         dit_section["sp_size"] = adjusted_sp_size
+
+    print(
+        f"Resolved distributed settings -> WORLD_SIZE={effective_world_size}, dit.sp_size={dit_section['sp_size']}"
+    )
 
     generation_mode = merged.setdefault("generation", {}).get("mode", "TA").upper()
     merged["generation"]["mode"] = generation_mode
