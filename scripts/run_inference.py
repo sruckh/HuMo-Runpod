@@ -211,7 +211,7 @@ def write_resolved_config(cfg: Dict[str, Any], output_dir: Path) -> Path:
     return resolved_path
 
 
-def sync_config_to_humo(resolved_config: Path) -> Path:
+def sync_config_to_humo(resolved_config: Path) -> list[Path]:
     """Copy the resolved config into locations the upstream HuMo code expects."""
 
     if not HUMO_SOURCE_DIR.exists():
@@ -221,24 +221,25 @@ def sync_config_to_humo(resolved_config: Path) -> Path:
 
     payload = resolved_config.read_text(encoding="utf-8")
 
-    targets = [
+    candidate_paths = [
         HUMO_SOURCE_DIR / "generate.yaml",
         HUMO_SOURCE_DIR / "configs" / "generate.yaml",
+        HUMO_SOURCE_DIR / "humo" / "configs" / "inference" / "generate.yaml",
     ]
 
-    written_target = None
-    for target in targets:
+    written_targets: list[Path] = []
+    for target in candidate_paths:
         if not target.parent.exists():
             continue
         target.write_text(payload, encoding="utf-8")
-        written_target = target
+        written_targets.append(target)
 
-    if not written_target:
+    if not written_targets:
         raise FileNotFoundError(
             f"Unable to locate a writable generate.yaml within {HUMO_SOURCE_DIR}"
         )
 
-    return written_target
+    return written_targets
 
 
 def main() -> int:
@@ -327,6 +328,14 @@ def main() -> int:
         f"Resolved distributed settings -> WORLD_SIZE={effective_world_size}, dit.sp_size={dit_section['sp_size']}"
     )
 
+    generation_section = merged.setdefault("generation", {})
+    if generation_section.get("sequence_parallel") != dit_section["sp_size"]:
+        print(
+            f"Propagating sequence_parallel from {generation_section.get('sequence_parallel')} "
+            f"to {dit_section['sp_size']}"
+        )
+        generation_section["sequence_parallel"] = dit_section["sp_size"]
+
     generation_mode = merged.setdefault("generation", {}).get("mode", "TA").upper()
     merged["generation"]["mode"] = generation_mode
 
@@ -349,10 +358,14 @@ def main() -> int:
     resolved_config_path = write_resolved_config(merged, output_dir)
 
     try:
-        sync_config_to_humo(resolved_config_path)
+        synced_paths = sync_config_to_humo(resolved_config_path)
     except Exception as exc:
         print(f"Unable to sync configuration into HuMo repo: {exc}")
         return 1
+    else:
+        print("Synced resolved config to:")
+        for path in synced_paths:
+            print(f"  - {path}")
 
     manifest_path = write_request_manifest(merged, script_path.name, output_dir)
     print(f"Wrote request manifest to {manifest_path}")
